@@ -1,0 +1,2 @@
+ALTER TABLE app_user
+    ALTER COLUMN gender TYPE CHAR(1);

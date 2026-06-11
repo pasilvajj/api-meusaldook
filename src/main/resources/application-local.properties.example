@@ -1,0 +1,10 @@
+# Copia para application-local.properties e ajusta (application-local.properties não vai para o Git).
+# cp src/main/resources/application-local.properties.example src/main/resources/application-local.properties
+#
+# Arranca o backend com perfil local, por exemplo:
+#   SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run
+#   ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+
+spring.datasource.url=jdbc:postgresql://localhost:5432/finance
+spring.datasource.username=finance
+spring.datasource.password=finance
