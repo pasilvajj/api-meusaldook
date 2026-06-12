@@ -18,7 +18,7 @@ import org.springframework.data.repository.query.Param;
 public interface FinanceTransactionRepository
         extends JpaRepository<FinanceTransaction, Long>, JpaSpecificationExecutor<FinanceTransaction> {
 
-    @EntityGraph(attributePaths = {"category", "account"})
+    @EntityGraph(attributePaths = {"category", "account", "recurring"})
     Optional<FinanceTransaction> findByIdAndOwner_Id(Long id, Long ownerId);
 
     @Override
@@ -52,4 +52,18 @@ public interface FinanceTransactionRepository
             @Param("to") Instant to,
             @Param("accountPk") String accountPublicKey,
             @Param("kind") MoneyKind kind);
+
+    void deleteByOwner_IdAndInstallmentGroupId(Long ownerId, String installmentGroupId);
+
+    @EntityGraph(attributePaths = {"category", "account"})
+    List<FinanceTransaction> findByOwner_IdAndCategory_IdAndAccount_PublicKeyAndKind(
+            Long ownerId, Long categoryId, String accountPublicKey, MoneyKind kind);
+
+    @EntityGraph(attributePaths = {"category", "account"})
+    List<FinanceTransaction> findByOwner_IdAndRecurring_Id(Long ownerId, Long recurringId);
+
+    @EntityGraph(attributePaths = {"category", "account"})
+    @Query(
+            "SELECT t FROM FinanceTransaction t WHERE t.owner.id = :userId AND t.description LIKE '%[Fixa:%'")
+    List<FinanceTransaction> findFixedExpenseAnchors(@Param("userId") Long userId);
 }

@@ -20,6 +20,13 @@ public class TransactionResponse {
     String description;
     Instant occurredAt;
     Instant createdAt;
+    String installmentGroupId;
+    Boolean projected;
+    Long recurringId;
+    Long sourceTransactionId;
+    Integer occurrenceIndex;
+    Boolean showInPayables;
+    Instant paidAt;
 
     public static TransactionResponse from(FinanceTransaction t) {
         return TransactionResponse.builder()
@@ -33,6 +40,11 @@ public class TransactionResponse {
                 .description(t.getDescription())
                 .occurredAt(t.getOccurredAt())
                 .createdAt(t.getCreatedAt())
+                .installmentGroupId(t.getInstallmentGroupId())
+                .projected(false)
+                .recurringId(t.getRecurring() != null ? t.getRecurring().getId() : null)
+                .showInPayables(t.isShowInPayables())
+                .paidAt(t.getPaidAt())
                 .build();
     }
 }

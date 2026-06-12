@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.economy</groupId>
-	<artifactId>finance-api</artifactId>
+	<artifactId>api-meusaldook</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>finance-api</name>
+	<name>api-meusaldook</name>
 	<description/>
 	<url/>
 	<licenses>

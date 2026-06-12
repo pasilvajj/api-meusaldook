@@ -20,13 +20,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "finance_transaction")
+@Table(name = "finance_recurring_transaction")
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FinanceTransaction {
+public class RecurringTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,10 +44,6 @@ public class FinanceTransaction {
     @JoinColumn(name = "account_id", nullable = false)
     private UserAccount account;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recurring_id")
-    private RecurringTransaction recurring;
-
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal amount;
 
@@ -58,18 +54,25 @@ public class FinanceTransaction {
     @Column(length = 1024)
     private String description;
 
-    @Column(name = "occurred_at", nullable = false)
-    private Instant occurredAt;
+    @Column(name = "start_at", nullable = false)
+    private Instant startAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private RecurringPeriodicity periodicity;
+
+    @Column(name = "every_n", nullable = false)
+    private int everyN;
+
+    @Column(name = "max_occurrences")
+    private Integer maxOccurrences;
+
+    @Column(nullable = false)
+    private boolean active;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
-    @Column(name = "installment_group_id", length = 36)
-    private String installmentGroupId;
-
     @Column(name = "show_in_payables", nullable = false)
     private boolean showInPayables;
-
-    @Column(name = "paid_at")
-    private Instant paidAt;
 }

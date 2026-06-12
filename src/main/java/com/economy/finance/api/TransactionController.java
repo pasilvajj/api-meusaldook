@@ -1,8 +1,10 @@
 package com.economy.finance.api;
 
+import com.economy.finance.api.dto.MarkOccurrencePaidRequest;
 import com.economy.finance.api.dto.TransactionRequest;
 import com.economy.finance.api.dto.TransactionResponse;
 import com.economy.finance.domain.MoneyKind;
+import com.economy.finance.service.PaymentService;
 import com.economy.finance.service.TransactionService;
 import jakarta.validation.Valid;
 import java.time.Instant;
@@ -29,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final PaymentService paymentService;
 
     @GetMapping
     public Page<TransactionResponse> list(
@@ -37,8 +40,9 @@ public class TransactionController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) MoneyKind kind,
             @RequestParam(required = false) String accountPublicKey,
+            @RequestParam(defaultValue = "false") boolean includeProjected,
             @PageableDefault(size = 20, sort = "occurredAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return transactionService.list(from, to, categoryId, kind, accountPublicKey, pageable);
+        return transactionService.list(from, to, categoryId, kind, accountPublicKey, includeProjected, pageable);
     }
 
     @GetMapping("/{id}")
@@ -61,5 +65,16 @@ public class TransactionController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long id) {
         transactionService.delete(id);
+    }
+
+    @PostMapping("/{id}/mark-paid")
+    public TransactionResponse markPaid(@PathVariable Long id) {
+        return paymentService.markTransactionPaid(id);
+    }
+
+    @PostMapping("/occurrences/mark-paid")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void markOccurrencePaid(@Valid @RequestBody MarkOccurrencePaidRequest request) {
+        paymentService.markOccurrencePaid(request);
     }
 }

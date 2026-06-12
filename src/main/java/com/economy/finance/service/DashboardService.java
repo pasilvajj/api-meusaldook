@@ -25,6 +25,7 @@ public class DashboardService {
     private final AccountService accountService;
     private final BudgetGoalService budgetGoalService;
     private final FinanceTransactionRepository transactionRepository;
+    private final RecurringProjectionService recurringProjectionService;
     private final CurrentUserService currentUserService;
 
     @Transactional(readOnly = true)
@@ -37,29 +38,29 @@ public class DashboardService {
         ZonedDateTime monthStart = ZonedDateTime.of(year, month, 1, 0, 0, 0, 0, utc);
         Instant from = monthStart.toInstant();
         Instant monthEnd = monthStart.plusMonths(1).toInstant();
-        Instant futureEnd = ZonedDateTime.of(year + 2, 12, 31, 23, 59, 59, 999_999_999, utc).toInstant();
-        Instant now = Instant.now();
 
         Specification<com.economy.finance.domain.FinanceTransaction> spec =
-                FinanceTransactionSpecs.forUser(userId, from, futureEnd, null, null, accountKey);
-        List<TransactionResponse> ranged =
+                FinanceTransactionSpecs.forUser(userId, from, monthEnd, null, null, accountKey);
+        List<TransactionResponse> persisted =
                 transactionRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "occurredAt")).stream()
                         .map(TransactionResponse::from)
                         .toList();
+        List<TransactionResponse> projected =
+                recurringProjectionService.project(userId, from, monthEnd, null, null, accountKey);
 
         List<TransactionResponse> monthTransactions = new ArrayList<>();
         List<TransactionResponse> scheduledPayables = new ArrayList<>();
         List<TransactionResponse> scheduledReceivables = new ArrayList<>();
-        for (TransactionResponse tx : ranged) {
+        for (TransactionResponse tx : mergeUnique(persisted, projected)) {
             Instant occurredAt = tx.getOccurredAt();
             if (!occurredAt.isBefore(from) && occurredAt.isBefore(monthEnd)) {
                 monthTransactions.add(tx);
-            }
-            if (occurredAt.isAfter(now)) {
-                if (tx.getKind() == MoneyKind.EXPENSE) {
-                    scheduledPayables.add(tx);
-                } else if (tx.getKind() == MoneyKind.INCOME) {
-                    scheduledReceivables.add(tx);
+                if (shouldShowInPayables(tx) && tx.getPaidAt() == null) {
+                    if (tx.getKind() == MoneyKind.EXPENSE) {
+                        scheduledPayables.add(tx);
+                    } else if (tx.getKind() == MoneyKind.INCOME) {
+                        scheduledReceivables.add(tx);
+                    }
                 }
             }
         }
@@ -74,10 +75,29 @@ public class DashboardService {
                 .build();
     }
 
+    private static boolean shouldShowInPayables(TransactionResponse tx) {
+        return Boolean.TRUE.equals(tx.getShowInPayables());
+    }
+
     private static String blankToPrincipal(String accountPublicKey) {
         if (accountPublicKey == null || accountPublicKey.isBlank()) {
             return "principal";
         }
         return accountPublicKey.trim();
+    }
+
+    private static List<TransactionResponse> mergeUnique(
+            List<TransactionResponse> persisted, List<TransactionResponse> projected) {
+        List<TransactionResponse> merged = new ArrayList<>(persisted);
+        java.util.Set<Long> ids = new java.util.HashSet<>();
+        for (TransactionResponse tx : persisted) {
+            ids.add(tx.getId());
+        }
+        for (TransactionResponse tx : projected) {
+            if (ids.add(tx.getId())) {
+                merged.add(tx);
+            }
+        }
+        return merged;
     }
 }

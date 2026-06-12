@@ -1,7 +1,10 @@
 package com.economy.finance.api.dto;
 
 import com.economy.finance.domain.MoneyKind;
+import com.economy.finance.domain.RecurringPeriodicity;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
@@ -9,7 +12,7 @@ import java.time.Instant;
 import lombok.Data;
 
 @Data
-public class TransactionRequest {
+public class RecurringTransactionRequest {
 
     @NotNull
     @DecimalMin(value = "0.0001", inclusive = true)
@@ -21,7 +24,6 @@ public class TransactionRequest {
     @NotNull
     private Long categoryId;
 
-    /** Chave pública da conta (ex.: `principal`). Se omitido, usa-se `principal`. */
     @Size(max = 64)
     private String accountPublicKey;
 
@@ -29,14 +31,18 @@ public class TransactionRequest {
     private String description;
 
     @NotNull
-    private Instant occurredAt;
+    private Instant startAt;
 
-    /** Agrupa parcelas da mesma despesa parcelada (UUID). */
-    @Size(max = 36)
-    private String installmentGroupId;
+    @NotNull
+    private RecurringPeriodicity periodicity;
 
-    private Boolean showInPayables;
+    @Min(1)
+    @Max(120)
+    private int everyN = 1;
 
-  /** Ao criar, marca a despesa como paga (`paid_at` = agora). */
-  private Boolean markAsPaid;
+  @Min(1)
+  @Max(999)
+  private Integer maxOccurrences;
+
+  private Boolean showInPayables;
 }
