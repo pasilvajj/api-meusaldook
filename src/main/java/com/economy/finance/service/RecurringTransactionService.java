@@ -6,6 +6,7 @@ import com.economy.finance.api.exception.ResourceNotFoundException;
 import com.economy.finance.config.UserCacheEvictor;
 import com.economy.finance.domain.AppUser;
 import com.economy.finance.domain.Category;
+import com.economy.finance.domain.MoneyKind;
 import com.economy.finance.domain.RecurringTransaction;
 import com.economy.finance.domain.UserAccount;
 import com.economy.finance.persistence.AppUserRepository;
@@ -72,6 +73,27 @@ public class RecurringTransactionService {
                         .findByIdAndOwner_Id(id, userId)
                         .orElseThrow(() -> new ResourceNotFoundException("Despesa fixa não encontrada"));
         return RecurringTransactionResponse.from(entity);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecurringTransactionResponse> list(String accountPublicKey, MoneyKind kind) {
+        Long userId = currentUserService.requireUserId();
+        String key =
+                accountPublicKey == null || accountPublicKey.isBlank() ? null : accountPublicKey.trim();
+        if (key != null && kind != null) {
+            return recurringRepository
+                    .findByOwner_IdAndAccount_PublicKeyAndKindAndActiveTrue(userId, key, kind)
+                    .stream()
+                    .map(RecurringTransactionResponse::from)
+                    .toList();
+        }
+        return recurringRepository.findByOwner_IdAndActiveTrue(userId).stream()
+                .filter(
+                        r ->
+                                (key == null || key.equals(r.getAccount().getPublicKey()))
+                                        && (kind == null || kind == r.getKind()))
+                .map(RecurringTransactionResponse::from)
+                .toList();
     }
 
     @Transactional

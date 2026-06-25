@@ -43,9 +43,6 @@ public class PaymentService {
                 transactionRepository
                         .findByIdAndOwner_Id(id, userId)
                         .orElseThrow(() -> new ResourceNotFoundException("Transação não encontrada"));
-        if (entity.getKind() != MoneyKind.EXPENSE) {
-            throw new IllegalArgumentException("Só despesas podem ser marcadas como pagas");
-        }
         if (entity.getPaidAt() == null) {
             entity.setPaidAt(Instant.now());
         }
@@ -63,19 +60,13 @@ public class PaymentService {
             RecurringTransaction recurring =
                     recurringRepository
                             .findByIdAndOwner_Id(request.getRecurringId(), userId)
-                            .orElseThrow(() -> new ResourceNotFoundException("Despesa fixa não encontrada"));
-            if (recurring.getKind() != MoneyKind.EXPENSE) {
-                throw new IllegalArgumentException("Só despesas podem ser marcadas como pagas");
-            }
+                            .orElseThrow(() -> new ResourceNotFoundException("Regra recorrente não encontrada"));
             upsertOccurrencePayment(userId, recurring, null, occurrenceDate, paidAt);
         } else if (request.getLegacyTransactionId() != null) {
             FinanceTransaction legacy =
                     transactionRepository
                             .findByIdAndOwner_Id(request.getLegacyTransactionId(), userId)
                             .orElseThrow(() -> new ResourceNotFoundException("Transação não encontrada"));
-            if (legacy.getKind() != MoneyKind.EXPENSE) {
-                throw new IllegalArgumentException("Só despesas podem ser marcadas como pagas");
-            }
             upsertOccurrencePayment(userId, null, legacy, occurrenceDate, paidAt);
         } else {
             throw new IllegalArgumentException("Informe recurringId ou legacyTransactionId");

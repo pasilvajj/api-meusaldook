@@ -13,5 +13,9 @@ public interface RecurringTransactionRepository extends JpaRepository<RecurringT
     List<RecurringTransaction> findByOwner_IdAndActiveTrue(Long ownerId);
 
     @EntityGraph(attributePaths = {"category", "account"})
+    List<RecurringTransaction> findByOwner_IdAndAccount_PublicKeyAndKindAndActiveTrue(
+            Long ownerId, String accountPublicKey, MoneyKind kind);
+
+    @EntityGraph(attributePaths = {"category", "account"})
     Optional<RecurringTransaction> findByIdAndOwner_Id(Long id, Long ownerId);
 }

@@ -54,7 +54,19 @@ public class CategoryService {
 
         List<Category> defaults = new ArrayList<>();
         defaults.add(Category.builder().owner(owner).name("Alimentação").kind(MoneyKind.EXPENSE).createdAt(now).build());
+        defaults.add(Category.builder().owner(owner).name("Academia").kind(MoneyKind.EXPENSE).createdAt(now).build());
         defaults.add(Category.builder().owner(owner).name("Bem Estar").kind(MoneyKind.EXPENSE).createdAt(now).build());
+        defaults.add(Category.builder().owner(owner).name("Aluguel").kind(MoneyKind.EXPENSE).createdAt(now).build());
+        defaults.add(Category.builder().owner(owner).name("Supermercado").kind(MoneyKind.EXPENSE).createdAt(now).build());
+        defaults.add(Category.builder().owner(owner).name("Gás").kind(MoneyKind.EXPENSE).createdAt(now).build());
+       
+        defaults.add(Category.builder().owner(owner).name("Restaurante").kind(MoneyKind.EXPENSE).createdAt(now).build());
+        defaults.add(Category.builder().owner(owner).name("Férias").kind(MoneyKind.EXPENSE).createdAt(now).build());
+        defaults.add(Category.builder().owner(owner).name("Viagens").kind(MoneyKind.EXPENSE).createdAt(now).build());
+        defaults.add(Category.builder().owner(owner).name("Academia").kind(MoneyKind.EXPENSE).createdAt(now).build());
+        defaults.add(Category.builder().owner(owner).name("Presente").kind(MoneyKind.EXPENSE).createdAt(now).build());
+        defaults.add(Category.builder().owner(owner).name("Entreterimento").kind(MoneyKind.EXPENSE).createdAt(now).build());
+        
         defaults.add(Category.builder().owner(owner).name("Cartão").kind(MoneyKind.EXPENSE).createdAt(now).build());
         defaults.add(Category.builder().owner(owner).name("Educação").kind(MoneyKind.EXPENSE).createdAt(now).build());
         defaults.add(Category.builder().owner(owner).name("Lazer").kind(MoneyKind.EXPENSE).createdAt(now).build());
