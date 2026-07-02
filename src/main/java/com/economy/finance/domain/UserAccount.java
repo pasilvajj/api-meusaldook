@@ -67,6 +67,18 @@ public class UserAccount {
     @Column(name = "consider_balance_mode", nullable = false, length = 32)
     private ConsiderBalanceMode considerBalanceMode;
 
+    /** Dia do vencimento da fatura (1–31); só para cartão de crédito. */
+    @Column(name = "credit_card_due_day")
+    private Short creditCardDueDay;
+
+    /** Data da próxima fatura; só para cartão de crédito. */
+    @Column(name = "credit_card_next_invoice_date")
+    private LocalDate creditCardNextInvoiceDate;
+
+    /** Dias antes do vencimento em que a fatura fecha; só para cartão de crédito. */
+    @Column(name = "credit_card_closing_days_before_due")
+    private Short creditCardClosingDaysBeforeDue;
+
     @Column(length = 2000)
     private String notes;
 

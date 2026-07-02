@@ -88,6 +88,7 @@ public class AccountService {
                         .createdAt(now)
                         .updatedAt(now)
                         .build();
+        CreditCardInvoiceDates.applyCreditCardFields(entity, request);
         AccountResponse created = AccountResponse.from(userAccountRepository.save(entity));
         userCacheEvictor.evictUser(userId);
         return created;
@@ -118,6 +119,7 @@ public class AccountService {
         entity.setConsiderBalanceMode(request.getConsiderBalanceMode());
         entity.setNotes(trimToNull(request.getNotes()));
         entity.setUpdatedAt(Instant.now());
+        CreditCardInvoiceDates.applyCreditCardFields(entity, request);
         AccountResponse updated = AccountResponse.from(userAccountRepository.save(entity));
         userCacheEvictor.evictUser(userId);
         return updated;

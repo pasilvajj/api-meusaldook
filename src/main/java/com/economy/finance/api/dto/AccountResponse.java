@@ -24,6 +24,9 @@ public class AccountResponse {
     BigDecimal initialBalanceAmount;
     SaldoCreditorDebtor saldoCreditorDebtor;
     ConsiderBalanceMode considerBalanceMode;
+    Integer creditCardDueDay;
+    LocalDate creditCardNextInvoiceDate;
+    Integer creditCardClosingDaysBeforeDue;
     String notes;
     BigDecimal signedInitialBalance;
     Instant createdAt;
@@ -45,10 +48,17 @@ public class AccountResponse {
                 .initialBalanceAmount(absAmt)
                 .saldoCreditorDebtor(a.getSaldoCreditorDebtor())
                 .considerBalanceMode(a.getConsiderBalanceMode())
+                .creditCardDueDay(toInteger(a.getCreditCardDueDay()))
+                .creditCardNextInvoiceDate(a.getCreditCardNextInvoiceDate())
+                .creditCardClosingDaysBeforeDue(toInteger(a.getCreditCardClosingDaysBeforeDue()))
                 .notes(a.getNotes())
                 .signedInitialBalance(signed)
                 .createdAt(a.getCreatedAt())
                 .updatedAt(a.getUpdatedAt())
                 .build();
+    }
+
+    private static Integer toInteger(Short value) {
+        return value == null ? null : value.intValue();
     }
 }
