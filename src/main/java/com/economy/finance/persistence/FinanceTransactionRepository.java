@@ -30,9 +30,18 @@ public interface FinanceTransactionRepository
     List<FinanceTransaction> findAll(Specification<FinanceTransaction> spec, Sort sort);
 
     @Query(
-            "SELECT t.kind, SUM(t.amount) FROM FinanceTransaction t "
+            "SELECT t.kind, SUM(t.amount) FROM FinanceTransaction t JOIN t.account a "
                     + "WHERE t.owner.id = :userId AND t.occurredAt >= :from AND t.occurredAt < :to "
-                    + "AND t.account.publicKey = COALESCE(:accountPk, t.account.publicKey) "
+                    + "AND ("
+                    + ":accountPk IS NULL "
+                    + "OR a.publicKey = :accountPk "
+                    + "OR ("
+                    + ":accountPk = 'principal' "
+                    + "AND a.accountType = com.economy.finance.domain.AccountType.CREDIT_CARD "
+                    + "AND a.considerBalanceMode = com.economy.finance.domain.ConsiderBalanceMode.PENDING "
+                    + "AND t.kind = com.economy.finance.domain.MoneyKind.EXPENSE"
+                    + ")"
+                    + ") "
                     + "GROUP BY t.kind")
     List<Object[]> sumByKindForPeriod(
             @Param("userId") Long userId,
@@ -41,10 +50,19 @@ public interface FinanceTransactionRepository
             @Param("accountPk") String accountPublicKey);
 
     @Query(
-            "SELECT c.name, SUM(t.amount) FROM FinanceTransaction t JOIN t.category c "
+            "SELECT c.name, SUM(t.amount) FROM FinanceTransaction t JOIN t.category c JOIN t.account a "
                     + "WHERE t.owner.id = :userId AND t.occurredAt >= :from AND t.occurredAt < :to "
                     + "AND t.kind = :kind "
-                    + "AND t.account.publicKey = COALESCE(:accountPk, t.account.publicKey) "
+                    + "AND ("
+                    + ":accountPk IS NULL "
+                    + "OR a.publicKey = :accountPk "
+                    + "OR ("
+                    + ":accountPk = 'principal' "
+                    + "AND a.accountType = com.economy.finance.domain.AccountType.CREDIT_CARD "
+                    + "AND a.considerBalanceMode = com.economy.finance.domain.ConsiderBalanceMode.PENDING "
+                    + "AND t.kind = com.economy.finance.domain.MoneyKind.EXPENSE"
+                    + ")"
+                    + ") "
                     + "GROUP BY c.id, c.name ORDER BY SUM(t.amount) DESC")
     List<Object[]> sumByCategoryForPeriod(
             @Param("userId") Long userId,
