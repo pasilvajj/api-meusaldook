@@ -53,11 +53,13 @@ public class TransactionService {
             MoneyKind kind,
             String accountPublicKey,
             boolean includeProjected,
+            boolean excludeCreditCards,
             Pageable pageable) {
         Long userId = currentUserService.requireUserId();
         String accountKey = blankToNull(accountPublicKey);
         Specification<FinanceTransaction> spec =
-                FinanceTransactionSpecs.forUser(userId, from, to, categoryId, kind, accountKey);
+                FinanceTransactionSpecs.forUser(
+                        userId, from, to, categoryId, kind, accountKey, excludeCreditCards);
 
         if (!includeProjected || from == null || to == null) {
             return transactionRepository.findAll(spec, pageable).map(TransactionResponse::from);
@@ -68,7 +70,8 @@ public class TransactionService {
                         .map(TransactionResponse::from)
                         .toList();
         List<TransactionResponse> projected =
-                recurringProjectionService.project(userId, from, to, categoryId, kind, accountKey);
+                recurringProjectionService.project(
+                        userId, from, to, categoryId, kind, accountKey, excludeCreditCards);
 
         List<TransactionResponse> merged = new ArrayList<>(persisted.size() + projected.size());
         merged.addAll(persisted);

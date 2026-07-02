@@ -1,5 +1,6 @@
 package com.economy.finance.persistence;
 
+import com.economy.finance.domain.AccountType;
 import com.economy.finance.domain.FinanceTransaction;
 import com.economy.finance.domain.MoneyKind;
 import jakarta.persistence.criteria.Predicate;
@@ -19,6 +20,17 @@ public final class FinanceTransactionSpecs {
             Long categoryId,
             MoneyKind kind,
             String accountPublicKey) {
+        return forUser(userId, from, to, categoryId, kind, accountPublicKey, false);
+    }
+
+    public static Specification<FinanceTransaction> forUser(
+            Long userId,
+            Instant from,
+            Instant to,
+            Long categoryId,
+            MoneyKind kind,
+            String accountPublicKey,
+            boolean excludeCreditCards) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("owner").get("id"), userId));
@@ -36,6 +48,8 @@ public final class FinanceTransactionSpecs {
             }
             if (accountPublicKey != null) {
                 predicates.add(cb.equal(root.get("account").get("publicKey"), accountPublicKey));
+            } else if (excludeCreditCards) {
+                predicates.add(cb.notEqual(root.get("account").get("accountType"), AccountType.CREDIT_CARD));
             }
             return cb.and(predicates.toArray(Predicate[]::new));
         };

@@ -1,6 +1,7 @@
 package com.economy.finance.service;
 
 import com.economy.finance.api.dto.TransactionResponse;
+import com.economy.finance.domain.AccountType;
 import com.economy.finance.domain.FinanceTransaction;
 import com.economy.finance.domain.MoneyKind;
 import com.economy.finance.domain.RecurringOccurrencePayment;
@@ -39,6 +40,17 @@ public class RecurringProjectionService {
             Long categoryId,
             MoneyKind kind,
             String accountPublicKey) {
+        return project(userId, rangeFrom, rangeToExclusive, categoryId, kind, accountPublicKey, false);
+    }
+
+    public List<TransactionResponse> project(
+            Long userId,
+            Instant rangeFrom,
+            Instant rangeToExclusive,
+            Long categoryId,
+            MoneyKind kind,
+            String accountPublicKey,
+            boolean excludeCreditCards) {
         List<TransactionResponse> projected = new ArrayList<>();
         Set<String> occupiedDays = new HashSet<>();
         Map<String, Instant> paidAtByDayKey = loadPaidAtMap(userId, rangeFrom, rangeToExclusive);
@@ -50,14 +62,14 @@ public class RecurringProjectionService {
                     rule.getCategory().getId(),
                     rule.getAccount().getPublicKey(),
                     rule.getAmount()));
-            if (!matchesFilters(rule, categoryId, kind, accountPublicKey)) {
+            if (!matchesFilters(rule, categoryId, kind, accountPublicKey, excludeCreditCards)) {
                 continue;
             }
             appendProjections(projected, occupiedDays, paidAtByDayKey, rule, null, rangeFrom, rangeToExclusive);
         }
 
         for (FinanceTransaction anchor : transactionRepository.findFixedExpenseAnchors(userId)) {
-            if (!matchesFilters(anchor, categoryId, kind, accountPublicKey)) {
+            if (!matchesFilters(anchor, categoryId, kind, accountPublicKey, excludeCreditCards)) {
                 continue;
             }
             String anchorKey = groupKey(
@@ -244,7 +256,11 @@ public class RecurringProjectionService {
     }
 
     private static boolean matchesFilters(
-            RecurringTransaction rule, Long categoryId, MoneyKind kind, String accountPublicKey) {
+            RecurringTransaction rule,
+            Long categoryId,
+            MoneyKind kind,
+            String accountPublicKey,
+            boolean excludeCreditCards) {
         if (categoryId != null && !categoryId.equals(rule.getCategory().getId())) {
             return false;
         }
@@ -256,6 +272,9 @@ public class RecurringProjectionService {
                 && !accountPublicKey.trim().equals(rule.getAccount().getPublicKey())) {
             return false;
         }
+        if (excludeCreditCards && rule.getAccount().getAccountType() == AccountType.CREDIT_CARD) {
+            return false;
+        }
         return true;
     }
 
@@ -264,7 +283,11 @@ public class RecurringProjectionService {
     }
 
     private static boolean matchesFilters(
-            FinanceTransaction tx, Long categoryId, MoneyKind kind, String accountPublicKey) {
+            FinanceTransaction tx,
+            Long categoryId,
+            MoneyKind kind,
+            String accountPublicKey,
+            boolean excludeCreditCards) {
         if (categoryId != null && !categoryId.equals(tx.getCategory().getId())) {
             return false;
         }
@@ -274,6 +297,9 @@ public class RecurringProjectionService {
         if (accountPublicKey != null
                 && !accountPublicKey.isBlank()
                 && !accountPublicKey.trim().equals(tx.getAccount().getPublicKey())) {
+            return false;
+        }
+        if (excludeCreditCards && tx.getAccount().getAccountType() == AccountType.CREDIT_CARD) {
             return false;
         }
         return true;
