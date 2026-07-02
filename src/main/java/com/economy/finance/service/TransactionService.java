@@ -3,6 +3,7 @@ package com.economy.finance.service;
 import com.economy.finance.api.dto.TransactionRequest;
 import com.economy.finance.api.dto.TransactionResponse;
 import com.economy.finance.api.exception.ResourceNotFoundException;
+import com.economy.finance.domain.AccountType;
 import com.economy.finance.domain.AppUser;
 import com.economy.finance.domain.Category;
 import com.economy.finance.domain.FinanceTransaction;
@@ -101,6 +102,9 @@ public class TransactionService {
         AppUser owner = appUserRepository.getReferenceById(userId);
         Category category = resolveCategory(userId, request.getCategoryId(), request.getKind());
         UserAccount account = resolveAccount(userId, request.getAccountPublicKey());
+        boolean markAsPaid =
+                Boolean.TRUE.equals(request.getMarkAsPaid())
+                        && account.getAccountType() != AccountType.CREDIT_CARD;
         FinanceTransaction entity =
                 FinanceTransaction.builder()
                         .owner(owner)
@@ -112,11 +116,11 @@ public class TransactionService {
                         .occurredAt(request.getOccurredAt())
                         .createdAt(Instant.now())
                         .installmentGroupId(blankToNull(request.getInstallmentGroupId()))
-                        .showInPayables(Boolean.TRUE.equals(request.getShowInPayables()))
-                        .paidAt(
-                                Boolean.TRUE.equals(request.getMarkAsPaid())
-                                        ? Instant.now()
-                                        : null)
+                        .showInPayables(
+                                account.getAccountType() == AccountType.CREDIT_CARD
+                                        ? false
+                                        : Boolean.TRUE.equals(request.getShowInPayables()))
+                        .paidAt(markAsPaid ? Instant.now() : null)
                         .build();
         TransactionResponse created = TransactionResponse.from(transactionRepository.save(entity));
         userCacheEvictor.evictUser(userId);

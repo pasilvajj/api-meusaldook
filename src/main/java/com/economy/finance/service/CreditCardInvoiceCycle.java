@@ -1,7 +1,9 @@
 package com.economy.finance.service;
 
 import com.economy.finance.domain.UserAccount;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.YearMonth;
 import java.util.Optional;
 
@@ -65,4 +67,20 @@ public final class CreditCardInvoiceCycle {
         }
         return cycle;
     }
+
+    public static InstantRange paymentQueryRange(Cycle cycle) {
+        ZoneOffset utc = ZoneOffset.UTC;
+        Instant from = cycle.periodStart().minusDays(31).atStartOfDay().toInstant(utc);
+        Instant to = cycle.dueDate().plusDays(31).atStartOfDay().toInstant(utc);
+        return new InstantRange(from, to);
+    }
+
+    public static InstantRange cycleInstantRange(Cycle cycle) {
+        ZoneOffset utc = ZoneOffset.UTC;
+        Instant from = cycle.periodStart().atStartOfDay().toInstant(utc);
+        Instant to = cycle.periodEnd().plusDays(1).atStartOfDay().toInstant(utc);
+        return new InstantRange(from, to);
+    }
+
+    public record InstantRange(Instant from, Instant to) {}
 }

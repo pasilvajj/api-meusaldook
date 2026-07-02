@@ -32,7 +32,6 @@ public interface FinanceTransactionRepository
     @Query(
             "SELECT t.kind, SUM(t.amount) FROM FinanceTransaction t JOIN t.account a "
                     + "WHERE t.owner.id = :userId AND t.occurredAt >= :from AND t.occurredAt < :to "
-                    + "AND (t.description IS NULL OR LOWER(t.description) NOT LIKE 'pagamento fatura%') "
                     + "AND ("
                     + "(:accountPk IS NULL AND a.accountType <> com.economy.finance.domain.AccountType.CREDIT_CARD) "
                     + "OR (:accountPk IS NOT NULL AND :accountPk <> 'principal' AND a.publicKey = :accountPk) "
@@ -49,7 +48,6 @@ public interface FinanceTransactionRepository
             "SELECT c.name, SUM(t.amount) FROM FinanceTransaction t JOIN t.category c JOIN t.account a "
                     + "WHERE t.owner.id = :userId AND t.occurredAt >= :from AND t.occurredAt < :to "
                     + "AND t.kind = :kind "
-                    + "AND (t.description IS NULL OR LOWER(t.description) NOT LIKE 'pagamento fatura%') "
                     + "AND ("
                     + "(:accountPk IS NULL AND a.accountType <> com.economy.finance.domain.AccountType.CREDIT_CARD) "
                     + "OR (:accountPk IS NOT NULL AND :accountPk <> 'principal' AND a.publicKey = :accountPk) "
@@ -62,6 +60,30 @@ public interface FinanceTransactionRepository
             @Param("to") Instant to,
             @Param("accountPk") String accountPublicKey,
             @Param("kind") MoneyKind kind);
+
+    @Query(
+            "SELECT COALESCE(SUM(t.amount), 0) FROM FinanceTransaction t "
+                    + "WHERE t.owner.id = :userId AND t.occurredAt >= :from AND t.occurredAt < :to "
+                    + "AND t.kind = com.economy.finance.domain.MoneyKind.EXPENSE "
+                    + "AND LOWER(t.description) LIKE 'pagamento fatura%' "
+                    + "AND LOWER(t.description) LIKE CONCAT('%', LOWER(:cardName), '%') "
+                    + "AND t.paidAt IS NOT NULL")
+    java.math.BigDecimal sumPaidInvoicePaymentsForCard(
+            @Param("userId") Long userId,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("cardName") String cardName);
+
+    @Query(
+            "SELECT COALESCE(SUM(t.amount), 0) FROM FinanceTransaction t JOIN t.account a "
+                    + "WHERE t.owner.id = :userId AND t.occurredAt >= :from AND t.occurredAt < :to "
+                    + "AND t.kind = com.economy.finance.domain.MoneyKind.EXPENSE "
+                    + "AND a.publicKey = :accountPk")
+    java.math.BigDecimal sumExpenseAmountForAccount(
+            @Param("userId") Long userId,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("accountPk") String accountPublicKey);
 
     void deleteByOwner_IdAndInstallmentGroupId(Long ownerId, String installmentGroupId);
 
