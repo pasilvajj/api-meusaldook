@@ -16,5 +16,7 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 
     List<Category> findByOwner_IdAndKindOrderByNameAsc(Long ownerId, MoneyKind kind);
 
+    Optional<Category> findByOwner_IdAndNameAndKind(Long ownerId, String name, MoneyKind kind);
+
     long countByOwner_Id(Long ownerId);
 }

@@ -48,4 +48,8 @@ public class Category {
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
+
+    @Column(name = "system_hidden", nullable = false)
+    @Builder.Default
+    private boolean systemHidden = false;
 }

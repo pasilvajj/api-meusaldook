@@ -9,6 +9,7 @@ import com.economy.finance.domain.MoneyKind;
 import com.economy.finance.config.UserCacheEvictor;
 import com.economy.finance.persistence.AppUserRepository;
 import com.economy.finance.persistence.CategoryRepository;
+import com.economy.finance.persistence.FinanceTransactionRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CategoryService {
 
+    public static final String CARD_PAYMENT_CATEGORY_NAME = "Pagamento de cartão";
+
     private final CategoryRepository categoryRepository;
+    private final FinanceTransactionRepository transactionRepository;
     private final AppUserRepository appUserRepository;
     private final CurrentUserService currentUserService;
     private final UserCacheEvictor userCacheEvictor;
@@ -31,8 +35,40 @@ public class CategoryService {
     public List<CategoryResponse> listAll() {
         Long userId = currentUserService.requireUserId();
         return categoryRepository.findByOwner_IdOrderByNameAsc(userId).stream()
+                .filter(c -> !c.isSystemHidden())
                 .map(CategoryResponse::from)
                 .toList();
+    }
+
+    @Transactional
+    public CategoryResponse ensureCardPaymentCategory() {
+        Long userId = currentUserService.requireUserId();
+        Category category = ensureCardPaymentCategoryEntity(userId);
+        return CategoryResponse.from(category);
+    }
+
+    @Transactional
+    public Category ensureCardPaymentCategoryEntity(Long userId) {
+        Category category =
+                categoryRepository
+                        .findByOwner_IdAndNameAndKind(userId, CARD_PAYMENT_CATEGORY_NAME, MoneyKind.EXPENSE)
+                        .orElseGet(() -> {
+                            AppUser owner = appUserRepository.getReferenceById(userId);
+                            return categoryRepository.save(
+                                    Category.builder()
+                                            .owner(owner)
+                                            .name(CARD_PAYMENT_CATEGORY_NAME)
+                                            .kind(MoneyKind.EXPENSE)
+                                            .systemHidden(true)
+                                            .createdAt(Instant.now())
+                                            .build());
+                        });
+        if (!category.isSystemHidden()) {
+            category.setSystemHidden(true);
+        }
+        transactionRepository.reassignInvoicePaymentsToCategory(userId, category);
+        userCacheEvictor.evictUser(userId);
+        return category;
     }
 
     @Transactional
@@ -92,6 +128,13 @@ public class CategoryService {
         defaults.add(Category.builder().owner(owner).name("Salário").kind(MoneyKind.INCOME).createdAt(now).build());
         defaults.add(Category.builder().owner(owner).name("Rendimentos").kind(MoneyKind.INCOME).createdAt(now).build());
         defaults.add(Category.builder().owner(owner).name("Outras Receitas").kind(MoneyKind.INCOME).createdAt(now).build());
+        defaults.add(Category.builder()
+                .owner(owner)
+                .name(CARD_PAYMENT_CATEGORY_NAME)
+                .kind(MoneyKind.EXPENSE)
+                .systemHidden(true)
+                .createdAt(now)
+                .build());
         categoryRepository.saveAll(defaults);
     }
 
@@ -139,6 +182,7 @@ public class CategoryService {
                 categoryRepository
                         .findByIdAndOwner_Id(id, userId)
                         .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada"));
+        assertNotSystemCategory(entity);
         Category parent = null;
         if (request.getParentId() != null) {
             if (request.getParentId().equals(id)) {
@@ -167,7 +211,14 @@ public class CategoryService {
                 categoryRepository
                         .findByIdAndOwner_Id(id, userId)
                         .orElseThrow(() -> new ResourceNotFoundException("Categoria não encontrada"));
+        assertNotSystemCategory(entity);
         categoryRepository.delete(entity);
         userCacheEvictor.evictUser(userId);
+    }
+
+    private static void assertNotSystemCategory(Category entity) {
+        if (entity.isSystemHidden()) {
+            throw new IllegalArgumentException("Esta categoria do sistema não pode ser alterada.");
+        }
     }
 }

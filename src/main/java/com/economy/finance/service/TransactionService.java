@@ -44,6 +44,7 @@ public class TransactionService {
     private final RecurringProjectionService recurringProjectionService;
     private final RecurringTransactionService recurringTransactionService;
     private final RecurringOccurrencePaymentRepository occurrencePaymentRepository;
+    private final CategoryService categoryService;
 
     @Transactional(readOnly = true)
     public Page<TransactionResponse> list(
@@ -104,6 +105,9 @@ public class TransactionService {
         Long userId = currentUserService.requireUserId();
         AppUser owner = appUserRepository.getReferenceById(userId);
         Category category = resolveCategory(userId, request.getCategoryId(), request.getKind());
+        if (isInvoicePaymentDescription(request.getDescription())) {
+            category = categoryService.ensureCardPaymentCategoryEntity(userId);
+        }
         UserAccount account = resolveAccount(userId, request.getAccountPublicKey());
         boolean markAsPaid =
                 Boolean.TRUE.equals(request.getMarkAsPaid())
@@ -138,6 +142,9 @@ public class TransactionService {
                         .findByIdAndOwner_Id(id, userId)
                         .orElseThrow(() -> new ResourceNotFoundException("Transação não encontrada"));
         Category category = resolveCategory(userId, request.getCategoryId(), request.getKind());
+        if (isInvoicePaymentDescription(request.getDescription())) {
+            category = categoryService.ensureCardPaymentCategoryEntity(userId);
+        }
         UserAccount account = resolveAccount(userId, request.getAccountPublicKey());
         entity.setAmount(request.getAmount());
         entity.setKind(request.getKind());
@@ -258,5 +265,10 @@ public class TransactionService {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    private static boolean isInvoicePaymentDescription(String description) {
+        if (description == null) return false;
+        return description.trim().toLowerCase().startsWith("pagamento fatura");
     }
 }

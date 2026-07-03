@@ -29,6 +29,11 @@ public class CategoryController {
         return categoryService.listAll();
     }
 
+    @GetMapping("/card-payment")
+    public CategoryResponse cardPayment() {
+        return categoryService.ensureCardPaymentCategory();
+    }
+
     @GetMapping("/{id}")
     public CategoryResponse get(@PathVariable Long id) {
         return categoryService.get(id);

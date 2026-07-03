@@ -1,5 +1,6 @@
 package com.economy.finance.persistence;
 
+import com.economy.finance.domain.Category;
 import com.economy.finance.domain.FinanceTransaction;
 import com.economy.finance.domain.MoneyKind;
 import java.time.Instant;
@@ -12,6 +13,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -48,6 +50,7 @@ public interface FinanceTransactionRepository
             "SELECT c.name, SUM(t.amount) FROM FinanceTransaction t JOIN t.category c JOIN t.account a "
                     + "WHERE t.owner.id = :userId AND t.occurredAt >= :from AND t.occurredAt < :to "
                     + "AND t.kind = :kind "
+                    + "AND LOWER(t.description) NOT LIKE 'pagamento fatura%' "
                     + "AND ("
                     + "(:accountPk IS NULL AND a.accountType <> com.economy.finance.domain.AccountType.CREDIT_CARD) "
                     + "OR (:accountPk IS NOT NULL AND :accountPk <> 'principal' AND a.publicKey = :accountPk) "
@@ -98,4 +101,10 @@ public interface FinanceTransactionRepository
     @Query(
             "SELECT t FROM FinanceTransaction t WHERE t.owner.id = :userId AND t.description LIKE '%[Fixa:%'")
     List<FinanceTransaction> findFixedExpenseAnchors(@Param("userId") Long userId);
+
+    @Modifying
+    @Query(
+            "UPDATE FinanceTransaction t SET t.category = :category "
+                    + "WHERE t.owner.id = :userId AND LOWER(t.description) LIKE 'pagamento fatura%'")
+    int reassignInvoicePaymentsToCategory(@Param("userId") Long userId, @Param("category") Category category);
 }
