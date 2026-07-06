@@ -17,9 +17,16 @@ public class UserCacheEvictor {
     private final CacheManager cacheManager;
 
     public void evictUser(Long userId) {
+        if (userId == null) {
+            return;
+        }
         String prefix = userId + ":";
         for (String cacheName : CACHE_NAMES) {
-            evictStartingWith(cacheName, prefix);
+            try {
+                evictStartingWith(cacheName, prefix);
+            } catch (RuntimeException ex) {
+                // Não falhar gravações se a limpeza de cache falhar (ex.: concorrência).
+            }
         }
     }
 
