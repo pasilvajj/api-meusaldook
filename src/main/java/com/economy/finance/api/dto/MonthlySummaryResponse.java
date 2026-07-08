@@ -16,6 +16,11 @@ public class MonthlySummaryResponse {
     List<CategoryTotal> byCategory;
     /** Totais por categoria só de receitas (ex.: metas de receita). */
     List<CategoryTotal> byIncomeCategory;
+    /**
+     * Pagamentos de fatura na conta (ex.: principal). Excluídos de {@link #byCategory} para não
+     * duplicar compras já categorizadas no cartão.
+     */
+    BigDecimal invoicePaymentTotal;
 
     @Value
     @Builder

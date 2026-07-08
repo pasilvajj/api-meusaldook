@@ -39,4 +39,7 @@ public class TransactionRequest {
 
   /** Ao criar, marca a despesa como paga (`paid_at` = agora). */
   private Boolean markAsPaid;
+
+  /** Ao editar parcela: propaga categoria e base da descrição às demais parcelas do grupo. */
+  private Boolean applyToInstallmentGroup;
 }

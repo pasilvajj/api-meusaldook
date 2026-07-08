@@ -3,11 +3,14 @@ package com.economy.finance.api.exception;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -68,6 +71,42 @@ public class GlobalExceptionHandler {
                         ApiError.builder()
                                 .code("INVALID_CREDENTIALS")
                                 .message("Email ou palavra-passe inválidos")
+                                .fieldErrors(List.of())
+                                .build());
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiError> handleAuthentication(AuthenticationException ex) {
+        log.warn("Falha de autenticação: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(
+                        ApiError.builder()
+                                .code("INVALID_CREDENTIALS")
+                                .message("Email ou palavra-passe inválidos")
+                                .fieldErrors(List.of())
+                                .build());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(
+                        ApiError.builder()
+                                .code("FORBIDDEN")
+                                .message("Sem permissão para aceder a este recurso")
+                                .fieldErrors(List.of())
+                                .build());
+    }
+
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<ApiError> handleDataAccess(DataAccessException ex) {
+        log.error("Erro de acesso à base de dados", ex);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(
+                        ApiError.builder()
+                                .code("SERVICE_UNAVAILABLE")
+                                .message(
+                                        "Serviço temporariamente indisponível. A base de dados não está acessível.")
                                 .fieldErrors(List.of())
                                 .build());
     }

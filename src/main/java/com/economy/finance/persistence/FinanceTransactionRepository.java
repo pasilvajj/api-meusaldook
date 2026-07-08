@@ -65,6 +65,22 @@ public interface FinanceTransactionRepository
             @Param("kind") MoneyKind kind);
 
     @Query(
+            "SELECT COALESCE(SUM(t.amount), 0) FROM FinanceTransaction t JOIN t.account a "
+                    + "WHERE t.owner.id = :userId AND t.occurredAt >= :from AND t.occurredAt < :to "
+                    + "AND t.kind = com.economy.finance.domain.MoneyKind.EXPENSE "
+                    + "AND LOWER(t.description) LIKE 'pagamento fatura%' "
+                    + "AND ("
+                    + "(:accountPk IS NULL AND a.accountType <> com.economy.finance.domain.AccountType.CREDIT_CARD) "
+                    + "OR (:accountPk IS NOT NULL AND :accountPk <> 'principal' AND a.publicKey = :accountPk) "
+                    + "OR (:accountPk = 'principal' AND a.publicKey = 'principal')"
+                    + ")")
+    java.math.BigDecimal sumInvoicePaymentsForPeriod(
+            @Param("userId") Long userId,
+            @Param("from") Instant from,
+            @Param("to") Instant to,
+            @Param("accountPk") String accountPublicKey);
+
+    @Query(
             "SELECT COALESCE(SUM(t.amount), 0) FROM FinanceTransaction t "
                     + "WHERE t.owner.id = :userId AND t.occurredAt >= :from AND t.occurredAt < :to "
                     + "AND t.kind = com.economy.finance.domain.MoneyKind.EXPENSE "
@@ -89,6 +105,9 @@ public interface FinanceTransactionRepository
             @Param("accountPk") String accountPublicKey);
 
     void deleteByOwner_IdAndInstallmentGroupId(Long ownerId, String installmentGroupId);
+
+    @EntityGraph(attributePaths = {"category", "account"})
+    List<FinanceTransaction> findByOwner_IdAndInstallmentGroupId(Long ownerId, String installmentGroupId);
 
     @EntityGraph(attributePaths = {"category", "account"})
     List<FinanceTransaction> findByOwner_IdAndCategory_IdAndAccount_PublicKeyAndKind(

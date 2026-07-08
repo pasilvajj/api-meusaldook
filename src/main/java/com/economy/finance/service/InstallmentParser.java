@@ -32,5 +32,32 @@ final class InstallmentParser {
                 .isPresent();
     }
 
+    static String withParcelLabel(String baseDescription, int parcelNumber, int totalParcels) {
+        String label = String.format("[Parcela %d/%d]", parcelNumber, totalParcels);
+        if (baseDescription == null || baseDescription.isBlank()) {
+            return label;
+        }
+        return baseDescription.trim() + "\n\n" + label;
+    }
+
+    /** Texto livre da despesa, sem linhas de metadados `[...]`. */
+    static String stripMetadataLines(String description) {
+        if (description == null || description.isBlank()) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder();
+        for (String line : description.split("\\R")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("[")) {
+                continue;
+            }
+            if (out.length() > 0) {
+                out.append("\n\n");
+            }
+            out.append(trimmed);
+        }
+        return out.toString();
+    }
+
     record InstallmentMeta(int parcelNumber, int totalParcels, String base) {}
 }

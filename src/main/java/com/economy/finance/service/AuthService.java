@@ -4,6 +4,7 @@ import com.economy.finance.api.dto.AuthResponse;
 import com.economy.finance.api.dto.LoginRequest;
 import com.economy.finance.api.dto.RegisterRequest;
 import com.economy.finance.api.exception.ConflictException;
+import com.economy.finance.api.exception.ResourceNotFoundException;
 import com.economy.finance.domain.AppUser;
 import com.economy.finance.persistence.AppUserRepository;
 import com.economy.finance.security.JwtService;
@@ -46,13 +47,13 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
+        String email = request.getEmail().trim().toLowerCase();
         authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail().trim().toLowerCase(), request.getPassword()));
+                new UsernamePasswordAuthenticationToken(email, request.getPassword()));
         AppUser user =
                 appUserRepository
-                        .findByEmailIgnoreCase(request.getEmail().trim().toLowerCase())
-                        .orElseThrow();
+                        .findByEmailIgnoreCase(email)
+                        .orElseThrow(() -> new ResourceNotFoundException("Utilizador não encontrado"));
         return tokenFor(user);
     }
 

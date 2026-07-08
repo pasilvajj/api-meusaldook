@@ -146,6 +146,10 @@ public class TransactionService {
             category = categoryService.ensureCardPaymentCategoryEntity(userId);
         }
         UserAccount account = resolveAccount(userId, request.getAccountPublicKey());
+        List<FinanceTransaction> installmentSiblings =
+                Boolean.TRUE.equals(request.getApplyToInstallmentGroup())
+                        ? findInstallmentGroupMembers(userId, entity)
+                        : List.of();
         entity.setAmount(request.getAmount());
         entity.setKind(request.getKind());
         entity.setCategory(category);
@@ -155,9 +159,45 @@ public class TransactionService {
         if (request.getShowInPayables() != null) {
             entity.setShowInPayables(request.getShowInPayables());
         }
-        TransactionResponse updated = TransactionResponse.from(entity);
+        FinanceTransaction saved = transactionRepository.save(entity);
+        if (installmentSiblings.size() > 1) {
+            propagateInstallmentGroupUpdate(userId, saved, installmentSiblings, request, category);
+        }
+        TransactionResponse updated = TransactionResponse.from(saved);
         userCacheEvictor.evictUser(userId);
         return updated;
+    }
+
+    private void propagateInstallmentGroupUpdate(
+            Long userId,
+            FinanceTransaction anchor,
+            List<FinanceTransaction> siblings,
+            TransactionRequest request,
+            Category category) {
+        String newBase = InstallmentParser.stripMetadataLines(request.getDescription());
+        for (FinanceTransaction sibling : siblings) {
+            if (sibling.getId().equals(anchor.getId())) {
+                continue;
+            }
+            sibling.setCategory(category);
+            InstallmentParser.parse(sibling.getDescription())
+                    .ifPresent(
+                            meta ->
+                                    sibling.setDescription(
+                                            InstallmentParser.withParcelLabel(
+                                                    newBase, meta.parcelNumber(), meta.totalParcels())));
+            transactionRepository.save(sibling);
+        }
+    }
+
+    private List<FinanceTransaction> findInstallmentGroupMembers(Long userId, FinanceTransaction entity) {
+        String groupId = entity.getInstallmentGroupId();
+        if (groupId != null && !groupId.isBlank()) {
+            return transactionRepository.findByOwner_IdAndInstallmentGroupId(userId, groupId);
+        }
+        return InstallmentParser.parse(entity.getDescription())
+                .map(meta -> findInstallmentSiblings(userId, entity, meta))
+                .orElse(List.of(entity));
     }
 
     @Transactional

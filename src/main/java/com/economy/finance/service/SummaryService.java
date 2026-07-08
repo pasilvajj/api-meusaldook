@@ -85,12 +85,19 @@ public class SummaryService {
                         .build())
                 .toList();
 
+        java.math.BigDecimal invoicePayments =
+                transactionRepository.sumInvoicePaymentsForPeriod(userId, from, to, accPk);
+        if (invoicePayments == null) {
+            invoicePayments = java.math.BigDecimal.ZERO;
+        }
+
         return MonthlySummaryResponse.builder()
                 .year(year)
                 .month(month)
                 .byKind(byKind)
                 .byCategory(byCategory)
                 .byIncomeCategory(byIncomeCategory)
+                .invoicePaymentTotal(invoicePayments)
                 .build();
     }
 
