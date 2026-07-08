@@ -49,23 +49,27 @@ public class CategoryService {
 
     @Transactional
     public Category ensureCardPaymentCategoryEntity(Long userId) {
-        Category category =
-                categoryRepository
-                        .findByOwner_IdAndNameAndKind(userId, CARD_PAYMENT_CATEGORY_NAME, MoneyKind.EXPENSE)
-                        .orElseGet(() -> {
-                            AppUser owner = appUserRepository.getReferenceById(userId);
-                            return categoryRepository.save(
-                                    Category.builder()
-                                            .owner(owner)
-                                            .name(CARD_PAYMENT_CATEGORY_NAME)
-                                            .kind(MoneyKind.EXPENSE)
-                                            .systemHidden(true)
-                                            .createdAt(Instant.now())
-                                            .build());
-                        });
-        if (!category.isSystemHidden()) {
-            category.setSystemHidden(true);
+        var existing =
+                categoryRepository.findByOwner_IdAndNameAndKind(userId, CARD_PAYMENT_CATEGORY_NAME, MoneyKind.EXPENSE);
+        if (existing.isPresent()) {
+            Category category = existing.get();
+            if (!category.isSystemHidden()) {
+                category.setSystemHidden(true);
+                categoryRepository.save(category);
+                userCacheEvictor.evictUser(userId);
+            }
+            return category;
         }
+        AppUser owner = appUserRepository.getReferenceById(userId);
+        Category category =
+                categoryRepository.save(
+                        Category.builder()
+                                .owner(owner)
+                                .name(CARD_PAYMENT_CATEGORY_NAME)
+                                .kind(MoneyKind.EXPENSE)
+                                .systemHidden(true)
+                                .createdAt(Instant.now())
+                                .build());
         transactionRepository.reassignInvoicePaymentsToCategory(userId, category);
         userCacheEvictor.evictUser(userId);
         return category;

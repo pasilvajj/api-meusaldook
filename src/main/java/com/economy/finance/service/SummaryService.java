@@ -1,6 +1,8 @@
 package com.economy.finance.service;
 
 import com.economy.finance.api.dto.MonthlySummaryResponse;
+import com.economy.finance.domain.AccountType;
+import com.economy.finance.domain.FinanceTransaction;
 import com.economy.finance.domain.MoneyKind;
 import com.economy.finance.persistence.FinanceTransactionRepository;
 import java.math.BigDecimal;
@@ -62,6 +64,67 @@ public class SummaryService {
             incomeByCategory.merge(name, total, BigDecimal::add);
         }
 
+        BigDecimal invoicePayments = transactionRepository.sumInvoicePaymentsForPeriod(userId, from, to, accPk);
+        if (invoicePayments == null) {
+            invoicePayments = BigDecimal.ZERO;
+        }
+
+        return buildMonthlyResponse(
+                year, month, kindTotals, expenseByCategory, incomeByCategory, invoicePayments);
+    }
+
+    /** Resumo a partir de transações já carregadas (evita reconsultar agregações no dashboard). */
+    public MonthlySummaryResponse summarizeFromEntities(
+            List<FinanceTransaction> transactions, int year, int month, String accountPublicKey) {
+        String accPk = blankToNull(accountPublicKey);
+
+        Map<MoneyKind, BigDecimal> kindTotals = new LinkedHashMap<>();
+        Map<String, BigDecimal> expenseByCategory = new LinkedHashMap<>();
+        Map<String, BigDecimal> incomeByCategory = new LinkedHashMap<>();
+        BigDecimal invoicePayments = BigDecimal.ZERO;
+
+        for (FinanceTransaction t : transactions) {
+            if (!matchesAccountFilter(t, accPk)) {
+                continue;
+            }
+            kindTotals.merge(t.getKind(), t.getAmount(), BigDecimal::add);
+
+            String desc = t.getDescription() != null ? t.getDescription().toLowerCase() : "";
+            boolean isInvoicePayment = desc.startsWith("pagamento fatura");
+
+            if (t.getKind() == MoneyKind.EXPENSE && isInvoicePayment) {
+                invoicePayments = invoicePayments.add(t.getAmount());
+                continue;
+            }
+            if (t.getKind() == MoneyKind.EXPENSE) {
+                expenseByCategory.merge(t.getCategory().getName(), t.getAmount(), BigDecimal::add);
+            } else if (t.getKind() == MoneyKind.INCOME) {
+                incomeByCategory.merge(t.getCategory().getName(), t.getAmount(), BigDecimal::add);
+            }
+        }
+
+        return buildMonthlyResponse(year, month, kindTotals, expenseByCategory, incomeByCategory, invoicePayments);
+    }
+
+    private static boolean matchesAccountFilter(FinanceTransaction t, String accPk) {
+        String pk = t.getAccount().getPublicKey();
+        AccountType type = t.getAccount().getAccountType();
+        if (accPk == null) {
+            return type != AccountType.CREDIT_CARD;
+        }
+        if ("principal".equals(accPk)) {
+            return "principal".equals(pk);
+        }
+        return accPk.equals(pk);
+    }
+
+    private MonthlySummaryResponse buildMonthlyResponse(
+            int year,
+            int month,
+            Map<MoneyKind, BigDecimal> kindTotals,
+            Map<String, BigDecimal> expenseByCategory,
+            Map<String, BigDecimal> incomeByCategory,
+            BigDecimal invoicePayments) {
         List<MonthlySummaryResponse.KindTotal> byKind = kindTotals.entrySet().stream()
                 .map(e -> MonthlySummaryResponse.KindTotal.builder()
                         .kind(e.getKey())
@@ -85,19 +148,13 @@ public class SummaryService {
                         .build())
                 .toList();
 
-        java.math.BigDecimal invoicePayments =
-                transactionRepository.sumInvoicePaymentsForPeriod(userId, from, to, accPk);
-        if (invoicePayments == null) {
-            invoicePayments = java.math.BigDecimal.ZERO;
-        }
-
         return MonthlySummaryResponse.builder()
                 .year(year)
                 .month(month)
                 .byKind(byKind)
                 .byCategory(byCategory)
                 .byIncomeCategory(byIncomeCategory)
-                .invoicePaymentTotal(invoicePayments)
+                .invoicePaymentTotal(invoicePayments != null ? invoicePayments : BigDecimal.ZERO)
                 .build();
     }
 

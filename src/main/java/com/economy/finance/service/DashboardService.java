@@ -2,6 +2,7 @@ package com.economy.finance.service;
 
 import com.economy.finance.api.dto.DashboardResponse;
 import com.economy.finance.api.dto.TransactionResponse;
+import com.economy.finance.domain.FinanceTransaction;
 import com.economy.finance.domain.MoneyKind;
 import com.economy.finance.persistence.FinanceTransactionRepository;
 import com.economy.finance.persistence.FinanceTransactionSpecs;
@@ -39,12 +40,12 @@ public class DashboardService {
         Instant from = monthStart.toInstant();
         Instant monthEnd = monthStart.plusMonths(1).toInstant();
 
-        Specification<com.economy.finance.domain.FinanceTransaction> spec =
+        Specification<FinanceTransaction> spec =
                 FinanceTransactionSpecs.forUser(userId, from, monthEnd, null, null, accountKey);
+        List<FinanceTransaction> persistedEntities =
+                transactionRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "occurredAt"));
         List<TransactionResponse> persisted =
-                transactionRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "occurredAt")).stream()
-                        .map(TransactionResponse::from)
-                        .toList();
+                persistedEntities.stream().map(TransactionResponse::from).toList();
         List<TransactionResponse> projected =
                 recurringProjectionService.project(userId, from, monthEnd, null, null, accountKey);
 
@@ -66,8 +67,9 @@ public class DashboardService {
         }
 
         return DashboardResponse.builder()
-                .summary(summaryService.monthly(year, month, accountKey))
+                .summary(summaryService.summarizeFromEntities(persistedEntities, year, month, accountKey))
                 .account(accountService.getByPublicKey(accountKey))
+                .accounts(accountService.listAll())
                 .goals(budgetGoalService.getMonth(year, month, MoneyKind.EXPENSE))
                 .monthTransactions(monthTransactions)
                 .scheduledPayables(scheduledPayables)

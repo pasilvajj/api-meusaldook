@@ -4,20 +4,14 @@ import com.economy.finance.api.dto.TransactionResponse;
 import com.economy.finance.domain.AccountType;
 import com.economy.finance.domain.FinanceTransaction;
 import com.economy.finance.domain.MoneyKind;
-import com.economy.finance.domain.RecurringOccurrencePayment;
 import com.economy.finance.domain.RecurringPeriodicity;
 import com.economy.finance.domain.RecurringTransaction;
-import com.economy.finance.persistence.FinanceTransactionRepository;
-import com.economy.finance.persistence.RecurringOccurrencePaymentRepository;
-import com.economy.finance.persistence.RecurringTransactionRepository;
 import com.economy.finance.service.FixedExpenseParser.FixedExpenseMeta;
 import java.math.BigDecimal;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -29,9 +23,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class RecurringProjectionService {
 
-    private final RecurringTransactionRepository recurringRepository;
-    private final FinanceTransactionRepository transactionRepository;
-    private final RecurringOccurrencePaymentRepository occurrencePaymentRepository;
+    private final RecurringProjectionRequestCache projectionCache;
 
     public List<TransactionResponse> project(
             Long userId,
@@ -53,8 +45,8 @@ public class RecurringProjectionService {
             boolean excludeCreditCards) {
         List<TransactionResponse> projected = new ArrayList<>();
         Set<String> occupiedDays = new HashSet<>();
-        Map<String, Instant> paidAtByDayKey = loadPaidAtMap(userId, rangeFrom, rangeToExclusive);
-        List<RecurringTransaction> activeRules = recurringRepository.findByOwner_IdAndActiveTrue(userId);
+        Map<String, Instant> paidAtByDayKey = projectionCache.paidAtMap(userId, rangeFrom, rangeToExclusive);
+        List<RecurringTransaction> activeRules = projectionCache.activeRules(userId);
         Set<String> activeRecurringKeys = new HashSet<>();
 
         for (RecurringTransaction rule : activeRules) {
@@ -68,7 +60,7 @@ public class RecurringProjectionService {
             appendProjections(projected, occupiedDays, paidAtByDayKey, rule, null, rangeFrom, rangeToExclusive);
         }
 
-        for (FinanceTransaction anchor : transactionRepository.findFixedExpenseAnchors(userId)) {
+        for (FinanceTransaction anchor : projectionCache.fixedAnchors(userId)) {
             if (!matchesFilters(anchor, categoryId, kind, accountPublicKey, excludeCreditCards)) {
                 continue;
             }
@@ -98,28 +90,6 @@ public class RecurringProjectionService {
         }
 
         return projected;
-    }
-
-    private Map<String, Instant> loadPaidAtMap(Long userId, Instant rangeFrom, Instant rangeToExclusive) {
-        LocalDate fromDate = rangeFrom.atZone(ZoneOffset.UTC).toLocalDate();
-        LocalDate toDate = rangeToExclusive.atZone(ZoneOffset.UTC).toLocalDate();
-        if (!toDate.isAfter(fromDate)) {
-            toDate = fromDate.plusDays(1);
-        }
-        Map<String, Instant> paidAtByDayKey = new HashMap<>();
-        for (RecurringOccurrencePayment payment :
-                occurrencePaymentRepository.findByOwner_IdAndOccurrenceDateInRange(userId, fromDate, toDate)) {
-            if (payment.getRecurring() != null) {
-                paidAtByDayKey.put(
-                        "r:" + payment.getRecurring().getId() + ":" + payment.getOccurrenceDate(),
-                        payment.getPaidAt());
-            } else if (payment.getLegacyTransaction() != null) {
-                paidAtByDayKey.put(
-                        "l:" + payment.getLegacyTransaction().getId() + ":" + payment.getOccurrenceDate(),
-                        payment.getPaidAt());
-            }
-        }
-        return paidAtByDayKey;
     }
 
     private void appendProjections(

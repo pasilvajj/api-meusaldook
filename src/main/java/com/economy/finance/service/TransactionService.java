@@ -55,12 +55,13 @@ public class TransactionService {
             String accountPublicKey,
             boolean includeProjected,
             boolean excludeCreditCards,
+            boolean creditCardsOnly,
             Pageable pageable) {
         Long userId = currentUserService.requireUserId();
         String accountKey = blankToNull(accountPublicKey);
         Specification<FinanceTransaction> spec =
                 FinanceTransactionSpecs.forUser(
-                        userId, from, to, categoryId, kind, accountKey, excludeCreditCards);
+                        userId, from, to, categoryId, kind, accountKey, excludeCreditCards, creditCardsOnly);
 
         if (!includeProjected || from == null || to == null) {
             return transactionRepository.findAll(spec, pageable).map(TransactionResponse::from);

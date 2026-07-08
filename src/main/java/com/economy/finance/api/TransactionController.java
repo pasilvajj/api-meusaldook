@@ -42,9 +42,10 @@ public class TransactionController {
             @RequestParam(required = false) String accountPublicKey,
             @RequestParam(defaultValue = "false") boolean includeProjected,
             @RequestParam(defaultValue = "false") boolean excludeCreditCards,
+            @RequestParam(defaultValue = "false") boolean creditCardsOnly,
             @PageableDefault(size = 20, sort = "occurredAt", direction = Sort.Direction.DESC) Pageable pageable) {
         return transactionService.list(
-                from, to, categoryId, kind, accountPublicKey, includeProjected, excludeCreditCards, pageable);
+                from, to, categoryId, kind, accountPublicKey, includeProjected, excludeCreditCards, creditCardsOnly, pageable);
     }
 
     @GetMapping("/{id}")

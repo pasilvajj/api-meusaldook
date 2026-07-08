@@ -9,6 +9,7 @@ import lombok.Value;
 public class DashboardResponse {
     MonthlySummaryResponse summary;
     AccountResponse account;
+    List<AccountResponse> accounts;
     BudgetGoalMonthResponse goals;
     List<TransactionResponse> monthTransactions;
     List<TransactionResponse> scheduledPayables;
